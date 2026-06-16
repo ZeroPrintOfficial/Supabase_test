@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZeroPrint | Testing Portal</title>
+
+<style>
+:root{
+    --bg:#030712;
+    --card:#111827;
+    --accent:#3b82f6;
+    --accent2:#06b6d4;
+    --text:#ffffff;
+    --muted:#94a3b8;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Inter,Segoe UI,Arial,sans-serif;
+}
+
+body{
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:
+        radial-gradient(circle at top left,#2563eb40,transparent 35%),
+        radial-gradient(circle at bottom right,#06b6d440,transparent 35%),
+        var(--bg);
+    color:var(--text);
+    padding:20px;
+}
+
+.card{
+    width:100%;
+    max-width:450px;
+    background:rgba(17,24,39,.85);
+    backdrop-filter:blur(20px);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:24px;
+    padding:35px;
+    box-shadow:0 20px 60px rgba(0,0,0,.45);
+}
+
+.logo{
+    width:80px;
+    height:80px;
+    margin:0 auto 15px;
+    border-radius:20px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:38px;
+    font-weight:bold;
+}
+
+h1{
+    text-align:center;
+    margin-bottom:6px;
+}
+
+.subtitle{
+    text-align:center;
+    color:var(--muted);
+    margin-bottom:25px;
+}
+
+.banner{
+    background:#0f172a;
+    border:1px solid rgba(255,255,255,.05);
+    padding:14px;
+    border-radius:12px;
+    text-align:center;
+    margin-bottom:20px;
+    color:#cbd5e1;
+}
+
+input{
+    width:100%;
+    padding:14px;
+    margin-bottom:12px;
+    border:none;
+    border-radius:12px;
+    background:#0f172a;
+    color:white;
+    font-size:15px;
+    outline:none;
+}
+
+input:focus{
+    border:1px solid var(--accent);
+}
+
+button{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:12px;
+    cursor:pointer;
+    font-weight:600;
+    transition:.2s;
+}
+
+.login-btn{
+    background:var(--accent);
+    color:white;
+}
+
+.signup-btn{
+    margin-top:10px;
+    background:#1f2937;
+    color:white;
+}
+
+button:hover{
+    transform:translateY(-2px);
+}
+
+.status{
+    margin-top:15px;
+    text-align:center;
+    min-height:22px;
+    color:#38bdf8;
+}
+
+.footer{
+    margin-top:20px;
+    text-align:center;
+    color:#64748b;
+    font-size:12px;
+}
+
+.success{
+    color:#22c55e;
+}
+
+.error{
+    color:#ef4444;
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+
+    <div class="logo">Z</div>
+
+    <h1>ZeroPrint</h1>
+
+    <div class="subtitle">
+        Testing Purposes
+    </div>
+
+    <div class="banner">
+        Property of ZeroPrint<br>
+        Active Testing Environment
+    </div>
+
+    <input
+        type="email"
+        id="email"
+        placeholder="Email Address"
+    >
+
+    <input
+        type="password"
+        id="password"
+        placeholder="Password"
+    >
+
+    <button class="login-btn" onclick="login()">
+        Login
+    </button>
+
+    <button class="signup-btn" onclick="signup()">
+        Create Account
+    </button>
+
+    <div id="status" class="status"></div>
+
+    <div class="footer">
+        Powered by Supabase Authentication
+    </div>
+
+</div>
+
+<script type="module">
+
+import { createClient }
+from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+const supabase = createClient(
+    'https://nerbfazadyzeqhwgxjyi.supabase.co',
+    'sb_publishable_nnGcs-OLdYbN8KYRr8-QNQ_77QBFXCg'
+);
+
+const statusElement =
+document.getElementById('status');
+
+function setStatus(message,type='info'){
+    statusElement.textContent = message;
+    statusElement.className = 'status';
+
+    if(type === 'success')
+        statusElement.classList.add('success');
+
+    if(type === 'error')
+        statusElement.classList.add('error');
+}
+
+window.login = async () => {
+
+    const email =
+    document.getElementById('email').value.trim();
+
+    const password =
+    document.getElementById('password').value;
+
+    if(!email || !password){
+        setStatus('Please enter email and password','error');
+        return;
+    }
+
+    setStatus('Signing in...');
+
+    const { error } =
+    await supabase.auth.signInWithPassword({
+        email,
+        password
+    });
+
+    if(error){
+        setStatus(error.message,'error');
+        return;
+    }
+
+    setStatus('Login successful!','success');
+};
+
+window.signup = async () => {
+
+    const email =
+    document.getElementById('email').value.trim();
+
+    const password =
+    document.getElementById('password').value;
+
+    if(!email || !password){
+        setStatus('Please enter email and password','error');
+        return;
+    }
+
+    setStatus('Creating account...');
+
+    const { error } =
+    await supabase.auth.signUp({
+        email,
+        password
+    });
+
+    if(error){
+        setStatus(error.message,'error');
+        return;
+    }
+
+    setStatus('Account created successfully!','success');
+};
+
+</script>
+
+</body>
+</html>
