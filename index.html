@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Supabase Auth Dashboard</title>
+  <title>Supabase AI Dashboard</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -25,9 +25,7 @@
       border-radius: 12px;
     }
 
-    h2 {
-      text-align: center;
-    }
+    h2 { text-align: center; }
 
     input {
       width: 100%;
@@ -47,19 +45,10 @@
       font-weight: bold;
     }
 
-    .btn {
-      background: #3b82f6;
-      color: white;
-    }
+    .btn { background: #3b82f6; color: white; }
+    .danger { background: #ef4444; color: white; }
 
-    .danger {
-      background: #ef4444;
-      color: white;
-    }
-
-    #dashboard {
-      display: none;
-    }
+    #dashboard { display: none; }
 
     .box {
       background: #1f2937;
@@ -69,7 +58,7 @@
     }
 
     .chat {
-      height: 180px;
+      height: 200px;
       overflow-y: auto;
       background: #0b1220;
       padding: 10px;
@@ -77,8 +66,8 @@
       font-size: 13px;
     }
 
-    .msg-user { color: #60a5fa; }
-    .msg-ai { color: #34d399; }
+    .user { color: #60a5fa; }
+    .ai { color: #34d399; }
   </style>
 </head>
 
@@ -86,7 +75,7 @@
 
 <div class="card">
 
-  <!-- LOGIN -->
+  <!-- AUTH -->
   <div id="auth">
     <h2>Login</h2>
 
@@ -113,16 +102,6 @@
 
       <input id="prompt" placeholder="Ask something...">
       <button class="btn" onclick="askAI()">Send</button>
-    </div>
-
-    <!-- FOOTPRINT -->
-    <div class="box">
-      <h3>Digital Footprint (Demo)</h3>
-
-      <input id="target" placeholder="Enter username/email">
-      <button class="btn" onclick="scan()">Analyze</button>
-
-      <div class="chat" id="footprint"></div>
     </div>
 
   </div>
@@ -183,7 +162,7 @@
     showAuth();
   }
 
-  // ⭐ IMPORTANT FIX: real-time auth sync
+  // ⭐ FIXED SESSION HANDLING
   supabaseClient.auth.onAuthStateChange((event, session) => {
     if (session?.user) {
       showDashboard(session.user);
@@ -204,50 +183,39 @@
 
   init();
 
-  // ---------------- AI (mock) ----------------
+  // ---------------- AI (REAL EDGE FUNCTION) ----------------
 
-  function askAI() {
+  async function askAI() {
     const input = $("prompt");
     const chat = $("chat");
 
     const msg = input.value;
     if (!msg) return;
 
-    chat.innerHTML += `<div class="msg-user">You: ${msg}</div>`;
+    chat.innerHTML += `<div class="user">You: ${msg}</div>`;
     input.value = "";
 
-    setTimeout(() => {
-      chat.innerHTML += `<div class="msg-ai">AI: ${mockAI(msg)}</div>`;
-    }, 500);
-  }
+    chat.innerHTML += `<div class="ai">AI: thinking...</div>`;
 
-  function mockAI(text) {
-    text = text.toLowerCase();
+    try {
+      const res = await fetch(
+        "https://YOUR_PROJECT_ID.supabase.co/functions/v1/gemini",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: msg })
+        }
+      );
 
-    if (text.includes("hello")) return "Hello! I am your dashboard assistant.";
-    if (text.includes("help")) return "Try asking about your account or footprint.";
+      const data = await res.json();
 
-    return "Processed: " + text;
-  }
+      document.querySelector(".ai:last-child").remove();
 
-  // ---------------- FOOTPRINT (mock) ----------------
-
-  function scan() {
-    const target = $("target").value;
-    const out = $("footprint");
-
-    if (!target) return;
-
-    out.innerHTML = "Scanning...";
-
-    setTimeout(() => {
-      out.innerHTML = `
-        <div class="msg-ai">Target: ${target}</div>
-        <div class="msg-ai">Public presence: Low</div>
-        <div class="msg-ai">Risk score: Minimal</div>
-        <div class="msg-ai">Data: simulated</div>
-      `;
-    }, 800);
+      chat.innerHTML += `<div class="ai">AI: ${data.text}</div>`;
+    } catch (err) {
+      document.querySelector(".ai:last-child").remove();
+      chat.innerHTML += `<div class="ai">AI: Error connecting to server</div>`;
+    }
   }
 </script>
 
