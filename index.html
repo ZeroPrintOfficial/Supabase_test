@@ -1,3 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Supabase Auth Dashboard</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .card {
+      width: 420px;
+      background: #111827;
+      padding: 20px;
+      border-radius: 12px;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: none;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .btn {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    #dashboard {
+      display: none;
+    }
+
+    .box {
+      background: #1f2937;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
+    .chat {
+      height: 180px;
+      overflow-y: auto;
+      background: #0b1220;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .msg-user { color: #60a5fa; }
+    .msg-ai { color: #34d399; }
+  </style>
+</head>
+
+<body>
+
+<div class="card">
+
+  <!-- LOGIN -->
+  <div id="auth">
+    <h2>Login</h2>
+
+    <input id="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+
+    <button class="btn" onclick="login()">Login</button>
+    <button class="btn" onclick="signup()">Create Account</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard">
+
+    <h2>Dashboard</h2>
+    <p id="userEmail"></p>
+
+    <button class="danger" onclick="logout()">Logout</button>
+
+    <!-- AI CHAT -->
+    <div class="box">
+      <h3>AI Assistant</h3>
+
+      <div class="chat" id="chat"></div>
+
+      <input id="prompt" placeholder="Ask something...">
+      <button class="btn" onclick="askAI()">Send</button>
+    </div>
+
+    <!-- FOOTPRINT -->
+    <div class="box">
+      <h3>Digital Footprint (Demo)</h3>
+
+      <input id="target" placeholder="Enter username/email">
+      <button class="btn" onclick="scan()">Analyze</button>
+
+      <div class="chat" id="footprint"></div>
+    </div>
+
+  </div>
+
+</div>
+
 <script>
   const supabaseUrl = "https://nerbfazadyzeqhwgxjyi.supabase.co";
   const supabaseKey = "sb_publishable_nnGcs-OLdYbN8KYRr8-QNQ_77QBFXCg";
@@ -17,6 +148,8 @@
     $("userEmail").innerText = user.email;
   }
 
+  // ---------------- AUTH ----------------
+
   async function login() {
     const email = $("email").value;
     const password = $("password").value;
@@ -26,14 +159,9 @@
       password
     });
 
-    if (error) {
-      alert(error.message);
-      return;
-    }
+    if (error) return alert(error.message);
 
-    if (data?.user) {
-      showDashboard(data.user);
-    }
+    if (data?.user) showDashboard(data.user);
   }
 
   async function signup() {
@@ -45,10 +173,7 @@
       password
     });
 
-    if (error) {
-      alert(error.message);
-      return;
-    }
+    if (error) return alert(error.message);
 
     alert("Check your email to confirm signup!");
   }
@@ -58,7 +183,16 @@
     showAuth();
   }
 
-  async function checkSession() {
+  // ⭐ IMPORTANT FIX: real-time auth sync
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (session?.user) {
+      showDashboard(session.user);
+    } else {
+      showAuth();
+    }
+  });
+
+  async function init() {
     const { data } = await supabaseClient.auth.getSession();
 
     if (data?.session?.user) {
@@ -68,5 +202,54 @@
     }
   }
 
-  checkSession();
+  init();
+
+  // ---------------- AI (mock) ----------------
+
+  function askAI() {
+    const input = $("prompt");
+    const chat = $("chat");
+
+    const msg = input.value;
+    if (!msg) return;
+
+    chat.innerHTML += `<div class="msg-user">You: ${msg}</div>`;
+    input.value = "";
+
+    setTimeout(() => {
+      chat.innerHTML += `<div class="msg-ai">AI: ${mockAI(msg)}</div>`;
+    }, 500);
+  }
+
+  function mockAI(text) {
+    text = text.toLowerCase();
+
+    if (text.includes("hello")) return "Hello! I am your dashboard assistant.";
+    if (text.includes("help")) return "Try asking about your account or footprint.";
+
+    return "Processed: " + text;
+  }
+
+  // ---------------- FOOTPRINT (mock) ----------------
+
+  function scan() {
+    const target = $("target").value;
+    const out = $("footprint");
+
+    if (!target) return;
+
+    out.innerHTML = "Scanning...";
+
+    setTimeout(() => {
+      out.innerHTML = `
+        <div class="msg-ai">Target: ${target}</div>
+        <div class="msg-ai">Public presence: Low</div>
+        <div class="msg-ai">Risk score: Minimal</div>
+        <div class="msg-ai">Data: simulated</div>
+      `;
+    }, 800);
+  }
 </script>
+
+</body>
+</html>
