@@ -1,15 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Supabase Auth App</title>
-
+  <title>Auth + AI Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
+      font-family: Arial;
       background: #0f172a;
       color: white;
       display: flex;
@@ -19,82 +17,58 @@
     }
 
     .card {
-      width: 360px;
+      width: 420px;
       background: #111827;
       padding: 20px;
       border-radius: 12px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
     }
 
-    h2 {
-      text-align: center;
-      margin-bottom: 10px;
-    }
-
-    input {
+    input, textarea {
       width: 100%;
       padding: 10px;
-      margin: 8px 0;
+      margin-top: 8px;
       border-radius: 8px;
       border: none;
-      outline: none;
     }
 
     button {
       width: 100%;
-      padding: 10px;
       margin-top: 10px;
-      border: none;
+      padding: 10px;
       border-radius: 8px;
+      border: none;
       cursor: pointer;
       font-weight: bold;
     }
 
-    .btn-primary { background: #3b82f6; color: white; }
-    .btn-danger { background: #ef4444; color: white; }
+    .btn { background: #3b82f6; color: white; }
+    .logout { background: #ef4444; color: white; }
 
-    .tabs {
-      display: flex;
-      margin-bottom: 10px;
-    }
+    #dashboard { display: none; }
 
-    .tab {
-      flex: 1;
+    .box {
+      background: #1f2937;
       padding: 10px;
-      text-align: center;
-      cursor: pointer;
-      background: #1f2937;
-    }
-
-    .tab.active {
-      background: #3b82f6;
-    }
-
-    #dashboard {
-      display: none;
-      text-align: center;
-    }
-
-    /* Toast */
-    .toast {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #1f2937;
-      padding: 10px 15px;
       border-radius: 8px;
-      opacity: 0;
-      transition: 0.3s;
+      margin-top: 10px;
     }
 
-    .toast.show {
-      opacity: 1;
+    .chat {
+      height: 200px;
+      overflow-y: auto;
+      background: #0b1220;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 10px;
+      font-size: 14px;
     }
 
-    .success { border-left: 5px solid #22c55e; }
-    .error { border-left: 5px solid #ef4444; }
-    .info { border-left: 5px solid #3b82f6; }
+    .msg {
+      margin: 5px 0;
+    }
+
+    .user { color: #60a5fa; }
+    .ai { color: #34d399; }
   </style>
 </head>
 
@@ -102,123 +76,151 @@
 
 <div class="card">
 
-  <!-- AUTH -->
+  <!-- LOGIN -->
   <div id="auth">
-    <h2>Welcome</h2>
+    <h2>Login</h2>
 
-    <div class="tabs">
-      <div class="tab active" onclick="switchTab('login')">Login</div>
-      <div class="tab" onclick="switchTab('signup')">Sign Up</div>
-    </div>
+    <input id="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
 
-    <input id="email" placeholder="Email" />
-    <input id="password" type="password" placeholder="Password" />
-
-    <button class="btn-primary" onclick="handleAction()">Continue</button>
+    <button class="btn" onclick="login()">Login</button>
+    <button class="btn" onclick="signup()">Create Account</button>
   </div>
 
   <!-- DASHBOARD -->
   <div id="dashboard">
+
     <h2>Dashboard</h2>
     <p id="userEmail"></p>
-    <button class="btn-danger" onclick="logout()">Logout</button>
+
+    <button class="logout" onclick="logout()">Logout</button>
+
+    <div class="box">
+      <h3>AI Assistant</h3>
+
+      <div class="chat" id="chat"></div>
+
+      <input id="prompt" placeholder="Ask something...">
+      <button class="btn" onclick="askAI()">Send</button>
+    </div>
+
+    <div class="box">
+      <h3>Digital Footprint Scan</h3>
+      <input id="target" placeholder="Enter username or email">
+      <button class="btn" onclick="scanFootprint()">Analyze</button>
+      <div id="footprint" class="chat"></div>
+    </div>
+
   </div>
 
 </div>
 
-<div id="toast" class="toast"></div>
-
 <script>
-  // Supabase setup
   const supabaseUrl = "https://nerbfazadyzeqhwgxjyi.supabase.co";
   const supabaseKey = "sb_publishable_nnGcs-OLdYbN8KYRr8-QNQ_77QBFXCg";
+
   const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-  let mode = "login";
+  function show(el) { document.getElementById(el).style.display = "block"; }
+  function hide(el) { document.getElementById(el).style.display = "none"; }
 
-  function switchTab(type) {
-    mode = type;
-
-    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-    event.target.classList.add("active");
-
-    showToast(`Switched to ${type}`, "info");
+  function showUser(user) {
+    hide("auth");
+    show("dashboard");
+    document.getElementById("userEmail").innerText = user.email;
   }
 
-  function showToast(msg, type="info") {
-    const toast = document.getElementById("toast");
-    toast.textContent = msg;
-    toast.className = `toast show ${type}`;
+  async function login() {
+    const email = email.value;
+    const password = password.value;
 
-    setTimeout(() => {
-      toast.classList.remove("show");
-    }, 2500);
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email, password
+    });
+
+    if (error) return alert(error.message);
+
+    showUser(data.user);
   }
 
-  async function handleAction() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+  async function signup() {
+    const email = email.value;
+    const password = password.value;
 
-    if (!email || !password) {
-      showToast("Fill in all fields", "error");
-      return;
-    }
+    const { error } = await supabaseClient.auth.signUp({
+      email, password
+    });
 
-    if (mode === "signup") {
-      showToast("Creating account...", "info");
+    if (error) return alert(error.message);
 
-      const { error } = await supabaseClient.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: "https://zeroprintofficial.github.io/Supabase_test/"
-        }
-      });
-
-      if (error) return showToast(error.message, "error");
-
-      showToast("Check your email to confirm!", "success");
-    } 
-    else {
-      showToast("Logging in...", "info");
-
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) return showToast(error.message, "error");
-
-      showDashboard(data.user);
-    }
-  }
-
-  function showDashboard(user) {
-    document.getElementById("auth").style.display = "none";
-    document.getElementById("dashboard").style.display = "block";
-    document.getElementById("userEmail").textContent = user.email;
-
-    showToast("Login successful", "success");
+    alert("Check email to confirm!");
   }
 
   async function logout() {
     await supabaseClient.auth.signOut();
-
-    document.getElementById("auth").style.display = "block";
-    document.getElementById("dashboard").style.display = "none";
-
-    showToast("Logged out", "info");
+    location.reload();
   }
 
   async function checkSession() {
     const { data } = await supabaseClient.auth.getSession();
-
-    if (data.session) {
-      showDashboard(data.session.user);
-    }
+    if (data.session) showUser(data.session.user);
   }
 
   checkSession();
+
+  // ---------------- AI (SIMULATED GEMINI STYLE) ----------------
+
+  async function askAI() {
+    const input = document.getElementById("prompt");
+    const chat = document.getElementById("chat");
+
+    const msg = input.value;
+    if (!msg) return;
+
+    chat.innerHTML += `<div class="msg user">You: ${msg}</div>`;
+    input.value = "";
+
+    chat.innerHTML += `<div class="msg ai">AI: thinking...</div>`;
+
+    setTimeout(() => {
+      document.querySelector(".ai:last-child").remove();
+
+      let response = generateAI(msg);
+
+      chat.innerHTML += `<div class="msg ai">AI: ${response}</div>`;
+    }, 800);
+  }
+
+  function generateAI(text) {
+    text = text.toLowerCase();
+
+    if (text.includes("hello")) return "Hello! I’m your dashboard assistant.";
+    if (text.includes("who are you")) return "I am a simulated AI inside your Supabase dashboard.";
+    if (text.includes("help")) return "Ask me anything or try the footprint scanner.";
+
+    return "I processed your request: " + text;
+  }
+
+  // ---------------- DIGITAL FOOTPRINT (SIMULATED) ----------------
+
+  function scanFootprint() {
+    const target = document.getElementById("target").value;
+    const out = document.getElementById("footprint");
+
+    if (!target) return;
+
+    out.innerHTML = "Scanning...";
+
+    setTimeout(() => {
+      out.innerHTML = `
+        <div class="msg ai">Analysis for: ${target}</div>
+        <div class="msg ai">• Public mentions: Low</div>
+        <div class="msg ai">• Social presence: Minimal</div>
+        <div class="msg ai">• Risk score: Low</div>
+        <div class="msg ai">• Data sources: simulated demo</div>
+      `;
+    }, 1000);
+  }
 </script>
 
 </body>
