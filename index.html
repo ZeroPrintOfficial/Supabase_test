@@ -1,121 +1,225 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Supabase Auth Demo</title>
+  <meta charset="UTF-8" />
+  <title>Supabase Auth App</title>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     body {
-      font-family: Arial;
-      max-width: 400px;
-      margin: 60px auto;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
+
+    .card {
+      width: 360px;
+      background: #111827;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
     input {
-      display: block;
       width: 100%;
       padding: 10px;
-      margin: 10px 0;
+      margin: 8px 0;
+      border-radius: 8px;
+      border: none;
+      outline: none;
     }
+
     button {
-      padding: 10px;
       width: 100%;
+      padding: 10px;
       margin-top: 10px;
+      border: none;
+      border-radius: 8px;
       cursor: pointer;
+      font-weight: bold;
     }
-    #app {
+
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-danger { background: #ef4444; color: white; }
+
+    .tabs {
+      display: flex;
+      margin-bottom: 10px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      background: #1f2937;
+    }
+
+    .tab.active {
+      background: #3b82f6;
+    }
+
+    #dashboard {
       display: none;
+      text-align: center;
     }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1f2937;
+      padding: 10px 15px;
+      border-radius: 8px;
+      opacity: 0;
+      transition: 0.3s;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    .success { border-left: 5px solid #22c55e; }
+    .error { border-left: 5px solid #ef4444; }
+    .info { border-left: 5px solid #3b82f6; }
   </style>
 </head>
+
 <body>
 
-<h2>Login / Signup</h2>
+<div class="card">
 
-<div id="auth">
-  <input id="email" placeholder="Email">
-  <input id="password" type="password" placeholder="Password">
+  <!-- AUTH -->
+  <div id="auth">
+    <h2>Welcome</h2>
 
-  <button onclick="signUp()">Create Account</button>
-  <button onclick="signIn()">Login</button>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('login')">Login</div>
+      <div class="tab" onclick="switchTab('signup')">Sign Up</div>
+    </div>
+
+    <input id="email" placeholder="Email" />
+    <input id="password" type="password" placeholder="Password" />
+
+    <button class="btn-primary" onclick="handleAction()">Continue</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard">
+    <h2>Dashboard</h2>
+    <p id="userEmail"></p>
+    <button class="btn-danger" onclick="logout()">Logout</button>
+  </div>
+
 </div>
 
-<div id="app">
-  <h3>Welcome 👋</h3>
-  <p id="user"></p>
-  <button onclick="signOut()">Logout</button>
-</div>
+<div id="toast" class="toast"></div>
 
 <script>
-  // Your Supabase credentials
+  // Supabase setup
   const supabaseUrl = "https://nerbfazadyzeqhwgxjyi.supabase.co";
   const supabaseKey = "sb_publishable_nnGcs-OLdYbN8KYRr8-QNQ_77QBFXCg";
-
   const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-  const authDiv = document.getElementById("auth");
-  const appDiv = document.getElementById("app");
-  const userText = document.getElementById("user");
+  let mode = "login";
 
-  // SIGN UP
-  async function signUp() {
+  function switchTab(type) {
+    mode = type;
+
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    event.target.classList.add("active");
+
+    showToast(`Switched to ${type}`, "info");
+  }
+
+  function showToast(msg, type="info") {
+    const toast = document.getElementById("toast");
+    toast.textContent = msg;
+    toast.className = `toast show ${type}`;
+
+    setTimeout(() => {
+      toast.classList.remove("show");
+    }, 2500);
+  }
+
+  async function handleAction() {
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
 
-    const { data, error } = await supabaseClient.auth.signUp({
-      email,
-      password
-    });
+    if (!email || !password) {
+      showToast("Fill in all fields", "error");
+      return;
+    }
 
-    if (error) {
-      alert(error.message);
-    } else {
-      alert("Check your email to confirm signup!");
+    if (mode === "signup") {
+      showToast("Creating account...", "info");
+
+      const { error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: "https://zeroprintofficial.github.io/Supabase_test/"
+        }
+      });
+
+      if (error) return showToast(error.message, "error");
+
+      showToast("Check your email to confirm!", "success");
+    } 
+    else {
+      showToast("Logging in...", "info");
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) return showToast(error.message, "error");
+
+      showDashboard(data.user);
     }
   }
 
-  // SIGN IN
-  async function signIn() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+  function showDashboard(user) {
+    document.getElementById("auth").style.display = "none";
+    document.getElementById("dashboard").style.display = "block";
+    document.getElementById("userEmail").textContent = user.email;
 
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (error) {
-      alert(error.message);
-    } else {
-      showUser(data.user);
-    }
+    showToast("Login successful", "success");
   }
 
-  // SIGN OUT
-  async function signOut() {
+  async function logout() {
     await supabaseClient.auth.signOut();
-    authDiv.style.display = "block";
-    appDiv.style.display = "none";
+
+    document.getElementById("auth").style.display = "block";
+    document.getElementById("dashboard").style.display = "none";
+
+    showToast("Logged out", "info");
   }
 
-  // SHOW USER
-  function showUser(user) {
-    authDiv.style.display = "none";
-    appDiv.style.display = "block";
-    userText.innerText = user.email;
-  }
-
-  // CHECK SESSION ON LOAD
-  async function checkUser() {
+  async function checkSession() {
     const { data } = await supabaseClient.auth.getSession();
 
     if (data.session) {
-      showUser(data.session.user);
+      showDashboard(data.session.user);
     }
   }
 
-  checkUser();
+  checkSession();
 </script>
 
-</body>
-</html>
 </body>
 </html>
